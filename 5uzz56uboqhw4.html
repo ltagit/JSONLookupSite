@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+   <head>
+       
+<!--Javascript Starting Here:-->            
+<script>
+    
+//Flag used for certain errors
+var err1=0;
+
+//.....................................................//   
+//This loads the javascript file given by the user's input  
+function viewJSON(what)
+    { 
+var URL = what.URL.value;
+
+//Error - if field is left blank        
+if (URL=="")
+    {
+      alert("Blank field entered! Please Enter a JSON File Name!");
+        return;
+    }
+
+//.....................................................//   
+//Load JSON from Slides example - open and parse        
+function loadJSON(url) {
+    xmlhttp=new XMLHttpRequest();
+    xmlhttp.open("GET",url,false); // "synchronous” (deprecated because it freezes the page while waiting for a response)
+
+//If invalid file name is entered, throw an error
+//try catch solution suggested by Piazza Question @201    
+    try{
+        xmlhttp.send();
+        if(xmlhttp.status==404) throw "test";
+        }
+    catch(err){
+        alert("Json file by that name does not exist or Invalid File Name Entered!");
+        return;
+        }
+    
+
+//If headers are malformed on JSON file or format is off
+     try{
+        jsonObj= JSON.parse(xmlhttp.responseText);
+        }
+    catch(err){
+        alert("JSON Format Issue - Check JSON File!");
+        return;
+        }
+    return jsonObj;
+}
+        
+//will take the supplied URL and pass it to loadJSON       
+jsonObj = loadJSON(URL);
+jsonObj.onload=generateHTML(jsonObj);  
+
+//If no errors are detected, continue with program        
+if(err1==0){
+    hWin = window.open("", "Assignment4", "height=850,width=1000"); 
+    hWin.document.write(html_text);
+    hWin.document.close();
+}
+        
+//Error1: Handles no Buildings in JSON file
+//Error2: Handles if Keys under Row do not match described keys.
+else if (err1==1){
+        alert("No Buildings Listed in JSON FILE!");
+        err1=0;
+    }
+ else if (err1==2){
+        alert("Incorrect Row Keys ()");
+        err1=0;
+    }
+ else if (err1==3){
+        alert("No Header Exists or Key changed!");
+        err1=0;
+    }
+else if (err1==4){
+        alert("Empty Json File!");
+        err1=0;
+    }
+}
+    
+//.....................................................//   
+//Function takes the supplied jsonObj and processes it into HTML format to be displayed in new window.    
+function generateHTML(jsonObj){
+//If JSON file is empty, create an alert.
+    if(JSON.stringify(jsonObj)=="{}"){
+       err1=4;
+       return;
+       }
+    {
+    
+//If either tag is missing completely, or Row contains no entrys, throw error that no buildings are listed. 
+    try{
+        planes=jsonObj.Mainline.Table.Row;
+        if (planes==undefined) throw "test1";
+        }
+    catch(err){
+        err1=1;
+        return;
+        }    
+    planeNodeList=planes[0];
+    if (planes.length==0)
+        { 
+            err1=1;
+            return;
+        }     
+    root=jsonObj.DocumentElement;
+    html_text="<html><head><title>Largest Manufactures by Production (2017)</title></head><body>";
+    html_text+="<table border='2'>"; 
+
+//Parses the headings different from the rows using defs from Header->Data
+//If you cannot access the Headers, or the Headers are empty, present error
+    try{
+        heading1=jsonObj.Mainline.Table.Header.Data;
+        if (heading1==undefined) throw "test1";
+        }
+    catch(err){
+        err1=3;
+        return;
+        }
+    if (heading1.length==0)
+        { 
+            err1=3;
+            return;
+        }     
+    html_text+="<tbody>";
+    html_text+="<tr>"; 
+    x=0; y=0;
+    
+//Outputs the headers using Header->Data
+    for(b=0;b<heading1.length;b++) {
+    header=heading1[b];
+ html_text+="<th>"+header+"</th>";   
+        }
+    }
+html_text+="</tr>";                          
+                               
+// output out the values per each row
+    for(i=0;i<planes.length;i++){
+    
+//get properties of a plane (an object) 
+    planeNodeList=planes[i];
+//start a new row of the output table
+    html_text+="<tr>"; 
+    var aircraft_keys = Object.keys(planeNodeList);
+        
+        
+    for(j=0;j<aircraft_keys.length;j++){
+        prop = aircraft_keys[j]; 
+        
+//isolates the categories needed only
+        if(aircraft_keys[j]=="Rank" || aircraft_keys[j]=="HomePage"|| aircraft_keys[j]=="Logo"|| aircraft_keys[j]=="Hubs"|| aircraft_keys[j]=="Height"||aircraft_keys[j]=="Name"
+          ){
+//handles websites
+            if(aircraft_keys[j]=="HomePage") {
+                html_text+="<td><a href='"+planeNodeList[prop]+"'>"+planeNodeList[prop]+"</a></td>"; 
+            }       
+
+//handle images separately as a square
+            else if(aircraft_keys[j]=="Logo") {
+                html_text+="<td><img src='"+ planeNodeList[prop] +"' width=200px'"+x+"' height=200px'"+y+"'></td>"; 
+            }
+            
+//handle Hubs by creating bullets and bolding the first one
+//If Hub is empty, dont display a bullet!
+            else if(aircraft_keys[j]=="Hubs" && planeNodeList[prop].Hub!="") { 
+             html_text+="<td><ul>";
+            for(a=0;a<planeNodeList[prop].Hub.length;a++){
+//Bold the first element in the list
+                if(a==0){
+                        html_text+="<li><b>"+planeNodeList[prop].Hub[a]+
+                        "</b></li>";
+                        }
+                else {
+                html_text+="<li>"+planeNodeList[prop].Hub[a]+
+                "</li>";
+                    }
+            }  
+            html_text+="</ul></td>";                
+            }
+            
+//If Hub is empty, dont display a bullet!
+            else if(aircraft_keys[j]=="Hubs" && planeNodeList[prop].Hub=="")
+                    {
+                     html_text+="<td></td>"
+                    }
+            
+//if it is not special, just print it out                
+            else {    
+            html_text+="<td>"+ planeNodeList[prop] +"</td>";
+        }       
+                }
+//else the keys are wrong and an error is pushed        
+       else{
+           err1=2;
+           return;
+       }     
+    }
+    html_text+="</tr>"; 
+}
+html_text+="</tbody>"; html_text+="</table>";
+html_text+= "</bo" + "<dy> </html>"; 
+                             }
+ </script>
+<!-- This styles the entry form to match the video-->
+       <style>
+           body{
+               text-align:center;
+               padding-top:100px;
+           }
+       </style>
+    </head>
+    
+    <body>
+<h3>Enter URL for list of tallest buildings JSON File</h3>
+<form name="myform" method="POST" id="location">
+<input type="text" name="URL" maxlength="255" size="30"  />
+<br />
+    <br>
+<input type="button" name="submit" value="Submit Query"onClick="viewJSON(this.form)" /> </form>
+        </body>   
+</html>
